@@ -9,6 +9,7 @@ import HomeScreen from './screens/HomeScreen';
 import TwoByTwo from './screens/TwoByTwo';
 import ThreeByThree from './screens/ThreeByThree';
 import TwoByTwoPractice from './screens/TwoByTwoPractice';
+import ThreeByThreePractice from './screens/ThreeByThreePractice';
 import InverseMatricesCourse from './screens/InverseMatricesCourse';
 
 const Stack = createNativeStackNavigator();
@@ -27,6 +28,7 @@ export default function App() {
           <Stack.Screen name="TwoByTwo" component={TwoByTwo} />
           <Stack.Screen name="ThreeByThree" component={ThreeByThree} />
           <Stack.Screen name="TwoByTwoPractice" component={TwoByTwoPractice} />
+          <Stack.Screen name="ThreeByThreePractice" component={ThreeByThreePractice} />
           <Stack.Screen name="InverseMatricesCourse" component={InverseMatricesCourse} />
         </Stack.Navigator>
       </NavigationContainer>

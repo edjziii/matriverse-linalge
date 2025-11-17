@@ -14,13 +14,17 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function TwoByTwoPractice({ navigation }) {
+export default function ThreeByThreePractice({ navigation }) {
   const [problems, setProblems] = useState([]);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [showSummary, setShowSummary] = useState(false);
   const [userInvertible, setUserInvertible] = useState(false);
-  const [userInput, setUserInput] = useState({ a: '', b: '', c: '', d: '' });
+  const [userInput, setUserInput] = useState({
+    a: '', b: '', c: '',
+    d: '', e: '', f: '',
+    g: '', h: '', i: ''
+  });
   const [score, setScore] = useState(0);
 
   // Pulsing animation for background
@@ -49,43 +53,86 @@ export default function TwoByTwoPractice({ navigation }) {
     generateProblems();
   }, []);
 
+  // Calculate determinant of 3x3 matrix
+  const calculateDeterminant = (matrix) => {
+    const [[a, b, c], [d, e, f], [g, h, i]] = matrix;
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+  };
+
+  // Calculate inverse of 3x3 matrix
+  const calculateInverse = (matrix) => {
+    const [[a, b, c], [d, e, f], [g, h, i]] = matrix;
+    const det = calculateDeterminant(matrix);
+    
+    if (det === 0) return null;
+
+    // Calculate cofactor matrix
+    const cofactor = [
+      [
+        (e * i - f * h),
+        -(d * i - f * g),
+        (d * h - e * g)
+      ],
+      [
+        -(b * i - c * h),
+        (a * i - c * g),
+        -(a * h - b * g)
+      ],
+      [
+        (b * f - c * e),
+        -(a * f - c * d),
+        (a * e - b * d)
+      ]
+    ];
+
+    // Transpose and divide by determinant
+    const inverse = [
+      [cofactor[0][0] / det, cofactor[1][0] / det, cofactor[2][0] / det],
+      [cofactor[0][1] / det, cofactor[1][1] / det, cofactor[2][1] / det],
+      [cofactor[0][2] / det, cofactor[1][2] / det, cofactor[2][2] / det]
+    ];
+
+    return inverse;
+  };
+
   const generateProblems = () => {
     const generated = [];
     for (let i = 0; i < 10; i++) {
-      let a = Math.floor(Math.random() * 10) - 5;
-      let b = Math.floor(Math.random() * 10) - 5;
-      let c = Math.floor(Math.random() * 10) - 5;
-      let d = Math.floor(Math.random() * 10) - 5;
+      let matrix = [
+        [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5],
+        [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5],
+        [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5]
+      ];
 
       // Ensure some matrices are invertible and some are not
       if (i % 3 === 0) {
-        // make invertible
-        while (a * d - b * c === 0) {
-          a = Math.floor(Math.random() * 10) - 5;
-          b = Math.floor(Math.random() * 10) - 5;
-          c = Math.floor(Math.random() * 10) - 5;
-          d = Math.floor(Math.random() * 10) - 5;
+        // Make invertible by ensuring non-zero determinant
+        let det = calculateDeterminant(matrix);
+        let attempts = 0;
+        while (det === 0 && attempts < 20) {
+          matrix = [
+            [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5],
+            [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5],
+            [Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5, Math.floor(Math.random() * 10) - 5]
+          ];
+          det = calculateDeterminant(matrix);
+          attempts++;
         }
       } else {
-        // make possibly non-invertible
-        if (Math.random() > 0.5) {
-          a = b = c = d = Math.floor(Math.random() * 5);
+        // Possibly make non-invertible
+        if (Math.random() > 0.6) {
+          // Make one row a multiple of another
+          const val = Math.floor(Math.random() * 3) + 1;
+          matrix[2] = matrix[0].map(x => x * val);
         }
       }
 
-      const determinant = a * d - b * c;
-      let correctInverse = null;
-
-      if (determinant !== 0) {
-        correctInverse = [
-          [d / determinant, -b / determinant],
-          [-c / determinant, a / determinant],
-        ];
-      }
+      const determinant = calculateDeterminant(matrix);
+      const correctInverse = calculateInverse(matrix);
 
       generated.push({
         id: i + 1,
-        matrix: { a, b, c, d },
+        matrix,
         determinant,
         correctInverse,
       });
@@ -97,28 +144,32 @@ export default function TwoByTwoPractice({ navigation }) {
     const problem = problems[current];
     const isInvertible = problem.determinant !== 0;
 
-    // Function to compare floating-point numbers with tolerance
-    const nearlyEqual = (a, b, epsilon = 0.001) => Math.abs(a - b) < epsilon;
+    const nearlyEqual = (a, b, epsilon = 0.01) => Math.abs(a - b) < epsilon;
 
     let isCorrect = false;
 
     if (userInvertible === isInvertible) {
       if (!isInvertible) {
-        isCorrect = true; // Correctly identified non-invertible
+        isCorrect = true;
       } else {
-        // Check if user's inverse values are approximately equal
-        isCorrect =
-          nearlyEqual(parseFloat(userInput.a), problem.correctInverse[0][0]) &&
-          nearlyEqual(parseFloat(userInput.b), problem.correctInverse[0][1]) &&
-          nearlyEqual(parseFloat(userInput.c), problem.correctInverse[1][0]) &&
-          nearlyEqual(parseFloat(userInput.d), problem.correctInverse[1][1]);
+        const userMatrix = [
+          [parseFloat(userInput.a) || 0, parseFloat(userInput.b) || 0, parseFloat(userInput.c) || 0],
+          [parseFloat(userInput.d) || 0, parseFloat(userInput.e) || 0, parseFloat(userInput.f) || 0],
+          [parseFloat(userInput.g) || 0, parseFloat(userInput.h) || 0, parseFloat(userInput.i) || 0]
+        ];
+
+        isCorrect = userMatrix.every((row, rowIdx) =>
+          row.every((val, colIdx) =>
+            nearlyEqual(val, problem.correctInverse[rowIdx][colIdx])
+          )
+        );
       }
     }
 
     const newAnswers = [
       ...answers,
       {
-        question: `${problem.matrix.a}  ${problem.matrix.b}\n${problem.matrix.c}  ${problem.matrix.d}`,
+        matrix: problem.matrix,
         actualInvertible: isInvertible,
         userInvertible,
         userAnswer: userInput,
@@ -133,7 +184,7 @@ export default function TwoByTwoPractice({ navigation }) {
 
     if (current + 1 < problems.length) {
       setCurrent(current + 1);
-      setUserInput({ a: '', b: '', c: '', d: '' });
+      setUserInput({ a: '', b: '', c: '', d: '', e: '', f: '', g: '', h: '', i: '' });
       setUserInvertible(false);
     } else {
       setShowSummary(true);
@@ -145,11 +196,12 @@ export default function TwoByTwoPractice({ navigation }) {
     setAnswers([]);
     setCurrent(0);
     setScore(0);
-    setUserInput({ a: '', b: '', c: '', d: '' });
+    setUserInput({ a: '', b: '', c: '', d: '', e: '', f: '', g: '', h: '', i: '' });
     generateProblems();
   };
 
   const formatNumber = (num) => {
+    if (num === undefined || num === null) return '-';
     if (Number.isInteger(num)) return num.toString();
     return num.toFixed(2);
   };
@@ -158,7 +210,6 @@ export default function TwoByTwoPractice({ navigation }) {
   if (showSummary) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        {/* Pulsing gradient background */}
         <View style={StyleSheet.absoluteFill}>
           <LinearGradient
             colors={['#121825', '#1F1170']}
@@ -208,7 +259,15 @@ export default function TwoByTwoPractice({ navigation }) {
                     <View style={styles.summaryMatrixContainer}>
                       <View style={styles.matrixBracket} />
                       <View style={styles.summaryMatrixContent}>
-                        <Text style={styles.summaryMatrixText}>{r.question}</Text>
+                        {r.matrix.map((row, rowIdx) => (
+                          <View key={rowIdx} style={styles.summaryMatrixRow}>
+                            {row.map((val, colIdx) => (
+                              <Text key={colIdx} style={styles.summaryMatrixElement}>
+                                {formatNumber(val)}
+                              </Text>
+                            ))}
+                          </View>
+                        ))}
                       </View>
                       <View style={[styles.matrixBracket, styles.matrixBracketRight]} />
                     </View>
@@ -227,7 +286,7 @@ export default function TwoByTwoPractice({ navigation }) {
 
                     {!r.actualInvertible ? (
                       <Text style={styles.determinantText}>
-                        Determinant: {r.determinant} (Not Invertible)
+                        Determinant: {formatNumber(r.determinant)} (Not Invertible)
                       </Text>
                     ) : (
                       <>
@@ -239,10 +298,10 @@ export default function TwoByTwoPractice({ navigation }) {
                         <View style={styles.inverseMatrixContainer}>
                           <View style={styles.matrixBracket} />
                           <View style={styles.inverseMatrixContent}>
-                            {r.correctInverse.map((row, rowIndex) => (
-                              <View key={rowIndex} style={styles.inverseRow}>
-                                {row.map((val, colIndex) => (
-                                  <Text key={colIndex} style={styles.inverseValue}>
+                            {r.correctInverse.map((row, rowIdx) => (
+                              <View key={rowIdx} style={styles.inverseRow}>
+                                {row.map((val, colIdx) => (
+                                  <Text key={colIdx} style={styles.inverseValue}>
                                     {formatNumber(val)}
                                   </Text>
                                 ))}
@@ -261,10 +320,17 @@ export default function TwoByTwoPractice({ navigation }) {
                                 <View style={styles.inverseRow}>
                                   <Text style={styles.inverseValue}>{r.userAnswer.a || '-'}</Text>
                                   <Text style={styles.inverseValue}>{r.userAnswer.b || '-'}</Text>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.c || '-'}</Text>
                                 </View>
                                 <View style={styles.inverseRow}>
-                                  <Text style={styles.inverseValue}>{r.userAnswer.c || '-'}</Text>
                                   <Text style={styles.inverseValue}>{r.userAnswer.d || '-'}</Text>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.e || '-'}</Text>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.f || '-'}</Text>
+                                </View>
+                                <View style={styles.inverseRow}>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.g || '-'}</Text>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.h || '-'}</Text>
+                                  <Text style={styles.inverseValue}>{r.userAnswer.i || '-'}</Text>
                                 </View>
                               </View>
                               <View style={[styles.matrixBracket, styles.matrixBracketRight]} />
@@ -312,7 +378,6 @@ export default function TwoByTwoPractice({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Pulsing gradient background */}
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
           colors={['#121825', '#1F1170']}
@@ -348,18 +413,19 @@ export default function TwoByTwoPractice({ navigation }) {
             <Text style={styles.questionLabel}>Find the inverse of:</Text>
             
             <View style={styles.matrixDisplayContainer}>
-              <View style={styles.matrixBracket} />
+              <View style={styles.matrixBracket3x3} />
               <View style={styles.matrixContent}>
-                <View style={styles.matrixRow}>
-                  <Text style={styles.matrixElement}>{currentProblem.matrix.a}</Text>
-                  <Text style={styles.matrixElement}>{currentProblem.matrix.b}</Text>
-                </View>
-                <View style={styles.matrixRow}>
-                  <Text style={styles.matrixElement}>{currentProblem.matrix.c}</Text>
-                  <Text style={styles.matrixElement}>{currentProblem.matrix.d}</Text>
-                </View>
+                {currentProblem.matrix.map((row, rowIdx) => (
+                  <View key={rowIdx} style={styles.matrixRow}>
+                    {row.map((val, colIdx) => (
+                      <Text key={colIdx} style={styles.matrixElement}>
+                        {val}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
               </View>
-              <View style={[styles.matrixBracket, styles.matrixBracketRight]} />
+              <View style={[styles.matrixBracket3x3, styles.matrixBracketRight]} />
             </View>
 
             <View style={styles.toggleCard}>
@@ -376,7 +442,7 @@ export default function TwoByTwoPractice({ navigation }) {
               <View style={styles.inputSection}>
                 <Text style={styles.inputSectionTitle}>Enter the Inverse Matrix:</Text>
                 <View style={styles.inputMatrixContainer}>
-                  <View style={styles.matrixBracket} />
+                  <View style={styles.matrixBracket3x3} />
                   <View style={styles.inputMatrixContent}>
                     <View style={styles.inputRow}>
                       <TextInput
@@ -395,8 +461,6 @@ export default function TwoByTwoPractice({ navigation }) {
                         value={userInput.b}
                         onChangeText={(text) => setUserInput({ ...userInput, b: text })}
                       />
-                    </View>
-                    <View style={styles.inputRow}>
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -405,6 +469,8 @@ export default function TwoByTwoPractice({ navigation }) {
                         value={userInput.c}
                         onChangeText={(text) => setUserInput({ ...userInput, c: text })}
                       />
+                    </View>
+                    <View style={styles.inputRow}>
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -413,9 +479,51 @@ export default function TwoByTwoPractice({ navigation }) {
                         value={userInput.d}
                         onChangeText={(text) => setUserInput({ ...userInput, d: text })}
                       />
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="e"
+                        placeholderTextColor="#90c9ff"
+                        value={userInput.e}
+                        onChangeText={(text) => setUserInput({ ...userInput, e: text })}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="f"
+                        placeholderTextColor="#90c9ff"
+                        value={userInput.f}
+                        onChangeText={(text) => setUserInput({ ...userInput, f: text })}
+                      />
+                    </View>
+                    <View style={styles.inputRow}>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="g"
+                        placeholderTextColor="#90c9ff"
+                        value={userInput.g}
+                        onChangeText={(text) => setUserInput({ ...userInput, g: text })}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="h"
+                        placeholderTextColor="#90c9ff"
+                        value={userInput.h}
+                        onChangeText={(text) => setUserInput({ ...userInput, h: text })}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        placeholder="i"
+                        placeholderTextColor="#90c9ff"
+                        value={userInput.i}
+                        onChangeText={(text) => setUserInput({ ...userInput, i: text })}
+                      />
                     </View>
                   </View>
-                  <View style={[styles.matrixBracket, styles.matrixBracketRight]} />
+                  <View style={[styles.matrixBracket3x3, styles.matrixBracketRight]} />
                 </View>
               </View>
             )}
@@ -491,9 +599,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
   },
-  matrixBracket: {
+  matrixBracket3x3: {
     width: 3,
-    height: 80,
+    height: 115,
     backgroundColor: '#76d6ff',
     borderTopLeftRadius: 2,
     borderBottomLeftRadius: 2,
@@ -504,20 +612,27 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 2,
     borderBottomRightRadius: 2,
   },
+  matrixBracket: {
+    width: 3,
+    height: 115,
+    backgroundColor: '#76d6ff',
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+  },
   matrixContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
   matrixRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   matrixElement: {
-    fontSize: 28,
+    fontSize: 22,
     color: '#fff',
     fontWeight: '600',
-    width: 60,
+    width: 50,
     textAlign: 'center',
     fontFamily: 'monospace',
   },
@@ -553,21 +668,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   inputMatrixContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
   },
   inputRow: {
     flexDirection: 'row',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   input: {
     backgroundColor: 'rgba(118,158,198,0.15)',
-    width: 70,
-    height: 55,
-    margin: 6,
-    borderRadius: 12,
+    width: 60,
+    height: 48,
+    margin: 3,
+    borderRadius: 10,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
     borderWidth: 1,
@@ -656,15 +771,20 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   summaryMatrixContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  summaryMatrixText: {
+  summaryMatrixRow: {
+    flexDirection: 'row',
+    marginVertical: 2,
+  },
+  summaryMatrixElement: {
     fontFamily: 'monospace',
-    fontSize: 18,
+    fontSize: 16,
     color: '#fff',
-    lineHeight: 28,
+    width: 50,
     textAlign: 'center',
+    fontWeight: '600',
   },
   answerRow: {
     flexDirection: 'row',
@@ -698,7 +818,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   inverseMatrixContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
   inverseRow: {
@@ -707,9 +827,9 @@ const styles = StyleSheet.create({
   },
   inverseValue: {
     fontFamily: 'monospace',
-    fontSize: 18,
+    fontSize: 15,
     color: '#fff',
-    width: 70,
+    width: 55,
     textAlign: 'center',
     fontWeight: '600',
   },
